@@ -80,7 +80,7 @@ export class CrawlerService implements OnModuleInit {
           alertMessage &&
           alertMessage.textContent.trim() === 'Nothing found'
         ) {
-          console.log("\n");
+          console.log(`\n`);
           return reject('Все страницы спаршены');
         }
 
