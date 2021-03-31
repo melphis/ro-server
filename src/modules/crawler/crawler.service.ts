@@ -1,10 +1,10 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { DatabaseService } from '../modules/database/database.service';
+import { DatabaseService } from '../database/database.service';
 import { parse } from 'node-html-parser';
 import request = require('request');
 import { Merchant, CURRENCY, Item, Lot, IPos } from '@models/index';
-import { timer } from 'rxjs';
-import { MerchantsService } from '../modules/database/merchants.service';
+import { BehaviorSubject, Subject, timer } from 'rxjs';
+import { MerchantsService } from '../database/merchants.service';
 import { fromPromise } from 'rxjs/internal-compatibility';
 import { switchMap, tap } from 'rxjs/operators';
 
@@ -12,7 +12,9 @@ import { switchMap, tap } from 'rxjs/operators';
 export class CrawlerService implements OnModuleInit {
   path = 'https://nya.playdf.org/?module=vending&nameid_order=asc&p=';
   currentPage = 1;
+  wip$ = new BehaviorSubject<boolean>(false);
   dateNow: Date;
+  lastWorkTime: string;
   items: Item[];
 
   constructor(
@@ -28,9 +30,13 @@ export class CrawlerService implements OnModuleInit {
       )
       .subscribe(async () => {
         this.dateNow = new Date();
-        console.time();
+        this.wip$.next(true);
+
         await this.run();
-        console.timeEnd();
+
+        this.lastWorkTime = CrawlerService.calcWorkTime(this.dateNow);
+
+        this.wip$.next(false);
       });
   }
 
@@ -54,9 +60,19 @@ export class CrawlerService implements OnModuleInit {
     return CURRENCY[cur.trim().replace(/\s+/, '_').toUpperCase()];
   }
 
+  private static calcWorkTime(
+    startDate: Date,
+    endDate: Date = new Date(),
+  ): string {
+    return new Date(endDate.getTime() - startDate.getTime())
+      .toUTCString()
+      .match(/\d+:\d+:\d+/)[0];
+  }
+
   async run() {
     console.log('Run called');
 
+    // return new Promise((r) => setTimeout(r, 2000));
     try {
       while (true) {
         await this.parsePage(this.currentPage);

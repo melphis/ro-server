@@ -6,10 +6,13 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
+import { CrawlerService } from '../crawler/crawler.service';
 
 @WebSocketGateway({ path: '/api' })
 export class EventsGateway
   implements OnGatewayInit, OnGatewayDisconnect, OnGatewayConnection {
+  constructor(private crawler: CrawlerService) {}
+
   @SubscribeMessage('items.list')
   itemsList(@MessageBody() data: any) {
     console.log('items list');
@@ -22,7 +25,9 @@ export class EventsGateway
   }
 
   handleConnection(client: any, ...args: any[]): any {
-    console.log('Handle connection');
+    this.crawler.wip$.subscribe((wip: boolean) =>
+      client.emit('crawler.wip', { wip: wip }),
+    );
     return true;
   }
 

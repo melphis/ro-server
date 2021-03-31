@@ -69,6 +69,7 @@ export class MerchantsService extends DatabaseService implements OnModuleInit {
 
   async save() {
     let i = 1;
+
     const lotsCount = this.list.reduce(
       (sum: number, merch: Merchant) => sum + merch.lots.length,
       0,
@@ -86,5 +87,7 @@ export class MerchantsService extends DatabaseService implements OnModuleInit {
         i++;
       }
     }
+
+    console.log();
   }
 }
