@@ -67,9 +67,24 @@ export class MerchantsService extends DatabaseService implements OnModuleInit {
     return merchant;
   }
 
-  save() {
-    this.list.forEach((merch: Merchant) => {
+  async save() {
+    const lotsCount = this.list.reduce(
+      (sum: number, merch: Merchant) => sum + merch.lots.length,
+      0,
+    );
+
+    for (const [index, merch] of this.list.entries()) {
+      for (const [lotIndex, lot] of merch.lots.entries()) {
+        await lot.create(DatabaseService.db);
+        // TODO: доделать вывод
+        process.stdout.write(
+          `Мерчей ${index} из ${this.list.length}. Лотов ${lotIndex} из ${lotsCount}`,
+        );
+        process.stdout.cursorTo(0);
+      }
+    }
+    /*this.list.forEach((merch: Merchant) => {
       merch.lots.forEach((lot: Lot) => lot.create(DatabaseService.db));
-    });
+    });*/
   }
 }

@@ -66,7 +66,7 @@ export class CrawlerService implements OnModuleInit {
     } catch (e) {
       console.log(e);
       this.currentPage = 1;
-      this.merchants.save();
+      await this.merchants.save();
     }
   }
 
@@ -80,6 +80,7 @@ export class CrawlerService implements OnModuleInit {
           alertMessage &&
           alertMessage.textContent.trim() === 'Nothing found'
         ) {
+          console.log("\n");
           return reject('Все страницы спаршены');
         }
 

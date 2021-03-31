@@ -2,6 +2,8 @@ import { CURRENCY, IDbModel, Item } from '@models/index';
 import { Database } from 'sqlite';
 
 export class Lot implements IDbModel {
+  id: number;
+
   constructor(
     public merchantId: number,
     public item: Item,
@@ -14,13 +16,15 @@ export class Lot implements IDbModel {
   ) {}
 
   async create(db: Database): Promise<void> {
-    await db.run(
+    const result = await db.run(
       `
 insert into lots
 (merchant_id, item_id, amount, price, refine, currency, insert_date)
 values(?, ?, ?, ?, ?, ?, ?)`,
       this.getValues(),
     );
+
+    this.id = result.lastID;
   }
 
   getValues(): any[] {
