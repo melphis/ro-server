@@ -1,21 +1,33 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { parse } from 'node-html-parser';
-import request = require('request');
 import { Merchant, CURRENCY, Item, Lot, IPos } from '@models/index';
-import { BehaviorSubject, Subject, timer } from 'rxjs';
 import { MerchantsService } from '../database/merchants.service';
+import { BehaviorSubject, Subject, timer } from 'rxjs';
 import { fromPromise } from 'rxjs/internal-compatibility';
-import { switchMap, tap } from 'rxjs/operators';
+import { concatMap, switchMap, tap } from 'rxjs/operators';
+import fetch from 'node-fetch';
+
+type TFetchedPage = AsyncGenerator<{ index: number; page: HTMLElement }>;
+
+interface ILotProcessed {
+  merchantIndex: number;
+  lotIndex: number;
+}
 
 @Injectable()
 export class CrawlerService implements OnModuleInit {
+  private static checkoutTimeout = 5 * 60 * 1000;
+
   path = 'https://nya.playdf.org/?module=vending&nameid_order=asc&p=';
   currentPage = 1;
-  wip$ = new BehaviorSubject<boolean>(false);
   dateNow: Date;
   lastWorkTime: string;
   items: Item[];
+  noNextPageError = new Error('Все страницы спаршены');
+  wip$ = new BehaviorSubject<boolean>(false);
+  lotProcessed$ = new Subject<ILotProcessed>();
+  pageParsed$ = new Subject<number>();
 
   constructor(
     private db: DatabaseService,
@@ -26,16 +38,16 @@ export class CrawlerService implements OnModuleInit {
     fromPromise(this.db.allItems())
       .pipe(
         tap((items) => (this.items = items)),
-        switchMap(() => timer(0, 5 * 60 * 1000)),
+        switchMap(() => timer(0, CrawlerService.checkoutTimeout)),
+        concatMap(() => {
+          this.wip$.next(true);
+          return fromPromise(this.run());
+        }),
+        concatMap(() => fromPromise(this.merchants.saveLots())),
       )
-      .subscribe(async () => {
+      .subscribe(() => {
         this.dateNow = new Date();
-        this.wip$.next(true);
-
-        await this.run();
-
         this.lastWorkTime = CrawlerService.calcWorkTime(this.dateNow);
-
         this.wip$.next(false);
       });
   }
@@ -69,51 +81,64 @@ export class CrawlerService implements OnModuleInit {
       .match(/\d+:\d+:\d+/)[0];
   }
 
-  async run() {
+  private runStub() {
+    console.log('Run stub called');
+    return new Promise((r) => setTimeout(r, 1000));
+  }
+
+  private async run() {
     console.log('Run called');
 
-    // return new Promise((r) => setTimeout(r, 2000));
-    try {
-      while (true) {
-        await this.parsePage(this.currentPage);
-        // throw new Error('Убрать эту ошибку');
-        this.currentPage++;
+    for await (const { index, page } of this.fetchPages(this.currentPage)) {
+      const rows = page.querySelector('table').querySelectorAll('tr');
+
+      for (const row of rows) {
+        await this.parseRow(row);
       }
-    } catch (e) {
-      console.log(e);
-      this.currentPage = 1;
-      await this.merchants.save();
+
+      this.pageParsed$.next(index);
+
+      if (process.stdout.cursorTo) {
+        process.stdout.write(`Page ${index} parsed...`);
+        process.stdout.cursorTo(0);
+      }
     }
   }
 
-  async parsePage(page: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      request(this.path + page, async (error, response, body) => {
-        const root = parse(body);
-        const alertMessage = root.querySelector('.alert.alert-warning');
-
-        if (
-          alertMessage &&
-          alertMessage.textContent.trim() === 'Nothing found'
-        ) {
-          console.log(`\n`);
-          return reject('Все страницы спаршены');
+  private async *fetchPages(index: number): TFetchedPage {
+    while (true) {
+      try {
+        const page = await this.parsePage(index);
+        yield { index, page };
+        index++;
+      } catch (e) {
+        if (e === this.noNextPageError) {
+          console.log(e.message);
+        } else {
+          console.error(e);
         }
 
-        const rows = root.querySelector('table').querySelectorAll('tr');
-
-        for (const row of rows) {
-          await this.parseRow(row);
-        }
-
-        process.stdout.write(`Page ${page} parsed...`);
-        process.stdout.cursorTo(0);
-        resolve();
-      });
-    });
+        return;
+      }
+    }
   }
 
-  async parseRow(row) {
+  private async parsePage(page: number): Promise<HTMLElement> {
+    const res = await fetch(this.path + page);
+    const body = await res.text();
+    const root = parse(body);
+    const alertMessage = root.querySelector('.alert.alert-warning');
+
+    if (alertMessage && alertMessage.textContent.trim() === 'Nothing found') {
+      console.log(`\n`);
+      throw this.noNextPageError;
+    }
+
+    // @ts-ignore
+    return root;
+  }
+
+  private async parseRow(row) {
     let [
       shopName,
       merchantName,
@@ -163,7 +188,7 @@ export class CrawlerService implements OnModuleInit {
     merchant.addLot(lot);
   }
 
-  async processItem(itemNode): Promise<Item> {
+  private async processItem(itemNode): Promise<Item> {
     let item: Item = CrawlerService.parseItem(itemNode);
     const cachedItem: Item = this.items.find(
       (i: Item) => i.itemId === item.itemId,

@@ -1,10 +1,18 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DatabaseService } from './database.service';
 import { Merchant, IMerchant, CURRENCY, IPos } from '@models/index';
+import { Subject } from 'rxjs';
+
+export interface ISaved {
+  merchantIndex: number;
+  lotIndex: number;
+}
 
 @Injectable()
 export class MerchantsService extends DatabaseService implements OnModuleInit {
   list: Merchant[] = [];
+
+  // merchSaved$ = new Subject<>();
 
   async onModuleInit(): Promise<void> {
     return Promise.resolve();
@@ -67,8 +75,8 @@ export class MerchantsService extends DatabaseService implements OnModuleInit {
     return merchant;
   }
 
-  async save() {
-    let i = 1;
+  async saveLots() {
+    let lotIndex = 1;
 
     const lotsCount = this.list.reduce(
       (sum: number, merch: Merchant) => sum + merch.lots.length,
@@ -79,12 +87,16 @@ export class MerchantsService extends DatabaseService implements OnModuleInit {
       for (const lot of merch.lots) {
         await lot.create(DatabaseService.db);
 
-        process.stdout.cursorTo(0);
-        process.stdout.write(
-          `Мерчей ${index} из ${this.list.length}. Лотов ${i} из ${lotsCount}`,
-        );
+        if (process.stdout.cursorTo) {
+          process.stdout.cursorTo(0);
+          process.stdout.write(
+            `Мерчей ${index + 1} из ${
+              this.list.length
+            }. Лотов ${lotIndex} из ${lotsCount}`,
+          );
+        }
 
-        i++;
+        lotIndex++;
       }
     }
 
