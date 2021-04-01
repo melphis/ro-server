@@ -1,7 +1,7 @@
-import { Database } from 'sqlite';
+import { Client } from 'pg';
 
 export interface IDbModel {
-  create(db: Database): Promise<void>;
-  update(db: Database): Promise<void>;
+  create(db: Client): Promise<void>;
+  update(db: Client): Promise<void>;
   getValues(): any[];
 }

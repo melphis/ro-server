@@ -17,7 +17,7 @@ interface ILotProcessed {
 
 @Injectable()
 export class CrawlerService implements OnModuleInit {
-  private static checkoutTimeout = 5 * 60 * 1000;
+  private static checkoutTimeout = 20 * 60 * 1000;
 
   path = 'https://nya.playdf.org/?module=vending&nameid_order=asc&p=';
   currentPage = 1;
@@ -40,13 +40,13 @@ export class CrawlerService implements OnModuleInit {
         tap((items) => (this.items = items)),
         switchMap(() => timer(0, CrawlerService.checkoutTimeout)),
         concatMap(() => {
+          this.dateNow = new Date();
           this.wip$.next(true);
           return fromPromise(this.run());
         }),
         concatMap(() => fromPromise(this.merchants.saveLots())),
       )
       .subscribe(() => {
-        this.dateNow = new Date();
         this.lastWorkTime = CrawlerService.calcWorkTime(this.dateNow);
         this.wip$.next(false);
       });

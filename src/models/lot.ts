@@ -1,5 +1,5 @@
 import { CURRENCY, IDbModel, Item } from '@models/index';
-import { Database } from 'sqlite';
+import { Client } from 'pg';
 
 export class Lot implements IDbModel {
   id: number;
@@ -15,16 +15,16 @@ export class Lot implements IDbModel {
     public cards: Item[] = [],
   ) {}
 
-  async create(db: Database): Promise<void> {
-    const result = await db.run(
+  async create(db: Client): Promise<void> {
+    const result = await db.query(
       `
-insert into lots
+insert into ro.lots
 (merchant_id, item_id, amount, price, refine, currency, insert_date)
-values(?, ?, ?, ?, ?, ?, ?)`,
+values($1, $2, $3, $4, $5, $6, $7)`,
       this.getValues(),
     );
 
-    this.id = result.lastID;
+    this.id = result.oid;
   }
 
   getValues(): any[] {
@@ -39,7 +39,7 @@ values(?, ?, ?, ?, ?, ?, ?)`,
     ];
   }
 
-  async update(db: Database): Promise<void> {
+  async update(db: Client): Promise<void> {
     return Promise.resolve();
   }
 }

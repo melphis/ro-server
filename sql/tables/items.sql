@@ -1,15 +1,16 @@
+-- auto-generated definition
 create table items
 (
-    id      integer not null
-        constraint items_pk
-            primary key autoincrement,
-    name    text    not null,
-    item_id integer not null
+    id      serial   not null
+        constraint item_pk
+            primary key,
+    name    char(40) not null,
+    item_id integer
 );
 
-create unique index items_id_uindex
-    on items (id);
+alter table items
+    owner to root;
 
-create unique index items_item_id_uindex
-    on items (item_id);
+create unique index item_id_uindex
+    on items (id);
 

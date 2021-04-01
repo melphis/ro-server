@@ -1,5 +1,5 @@
 import { IDbModel } from '@models/index';
-import { Database } from 'sqlite';
+import { Client } from 'pg';
 
 export interface IItem {
   id: number;
@@ -12,23 +12,23 @@ export class Item implements IDbModel {
 
   constructor(public name: string, public itemId: number) {}
 
-  async create(db: Database): Promise<void> {
-    const result = await db.run(
+  async create(db: Client): Promise<void> {
+    const result = await db.query(
       `
-insert into items
+insert into ro.items
 (name, item_id)
-values(?, ?)`,
+values($1, $2)`,
       this.getValues(),
     );
 
-    this.id = result.lastID;
+    this.id = result.oid;
   }
 
   getValues(): any[] {
     return [this.name, this.itemId];
   }
 
-  update(db: Database): Promise<void> {
+  update(db: Client): Promise<void> {
     return Promise.resolve();
   }
 }

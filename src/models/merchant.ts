@@ -1,5 +1,5 @@
 import { CURRENCY, IDbModel, IPos, Lot } from '@models/index';
-import { Database } from 'sqlite';
+import { Client } from 'pg';
 
 export class Merchant implements IDbModel {
   id: number;
@@ -13,26 +13,26 @@ export class Merchant implements IDbModel {
     public lots: Lot[] = [],
   ) {}
 
-  async create(db: Database): Promise<void> {
+  async create(db: Client): Promise<void> {
     if (this.id) {
       throw new Error(`Мерч с id ${this.id} уже существует.`);
     }
 
-    const result = await db.run(
-      `insert into merchants
+    const result = await db.query(
+      `insert into ro.merchants
         (name, pos_top, pos_left, currency, shop_name, last_update)
-         values (?, ?, ?, ?, ?, ?)`,
-      this.getValues(),
+         values ($1, $2, $3, $4, $5, $6)`,
+      this.getValues().slice(0, 6),
     );
 
-    this.id = result.lastID;
+    this.id = result.oid;
   }
 
-  async update(db: Database): Promise<void> {
-    await db.run(
-      `update merchants
-          set name = ?, pos_left = ?, pos_top = ?, currency = ?, shop_name = ?, last_update = ?
-          where id = ?
+  async update(db: Client): Promise<void> {
+    await db.query(
+      `update ro.merchants
+          set name = $1, pos_left = $2, pos_top = $3, currency = $4, shop_name = $5, last_update = $6
+          where id = $7
         `,
       this.getValues(),
     );
@@ -49,7 +49,8 @@ export class Merchant implements IDbModel {
       this.pos.left,
       this.currency,
       this.shopName,
-      this.lastUpdate,
+      this.lastUpdate.toISOString().replace('T', ' ').replace('Z', ''),
+      this.id,
     ];
   }
 }
