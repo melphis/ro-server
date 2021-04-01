@@ -3,7 +3,7 @@ Description=Ro parser.
 After=network.target
 
 [Service]
-WorkingDirectory=/root/parser/
+WorkingDirectory=/root/parser/server/
 User=root
 LimitNOFILE=infinity
 LimitNPROC=infinity
@@ -12,7 +12,7 @@ TimeoutStartSec=8
 Restart=always
 RestartSec=3
 
-ExecStart=/usr/bin/node /root/parser/dist/main.js
+ExecStart=/usr/bin/node /root/parser/server/dist/main.js
 
 [Install]
 WantedBy=multi-user.target
