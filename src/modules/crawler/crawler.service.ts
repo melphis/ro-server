@@ -3,17 +3,24 @@ import { DatabaseService } from '../database/database.service';
 import { parse } from 'node-html-parser';
 import { Merchant, CURRENCY, Item, Lot, IPos } from '@models/index';
 import { MerchantsService } from '../database/merchants.service';
-import { BehaviorSubject, Subject, timer } from 'rxjs';
+import { BehaviorSubject, concat, ObservableInput, of, range, Subject, timer } from 'rxjs';
 import { fromPromise } from 'rxjs/internal-compatibility';
-import { concatMap, switchMap, tap } from 'rxjs/operators';
+import {
+  concatAll,
+  concatMap,
+  delay, last,
+  map,
+  mapTo,
+  mergeAll,
+  switchMap,
+  take,
+  takeLast,
+  tap,
+  timeout
+} from 'rxjs/operators';
 import fetch from 'node-fetch';
 
 type TFetchedPage = AsyncGenerator<{ index: number; page: HTMLElement }>;
-
-interface ILotProcessed {
-  merchantIndex: number;
-  lotIndex: number;
-}
 
 @Injectable()
 export class CrawlerService implements OnModuleInit {
@@ -26,7 +33,6 @@ export class CrawlerService implements OnModuleInit {
   items: Item[];
   noNextPageError = new Error('Все страницы спаршены');
   wip$ = new BehaviorSubject<boolean>(false);
-  lotProcessed$ = new Subject<ILotProcessed>();
   pageParsed$ = new Subject<number>();
 
   constructor(
@@ -35,6 +41,8 @@ export class CrawlerService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
+    return this.runStub();
+
     fromPromise(this.db.allItems())
       .pipe(
         tap((items) => (this.items = items)),
@@ -82,8 +90,28 @@ export class CrawlerService implements OnModuleInit {
   }
 
   private runStub() {
-    console.log('Run stub called');
-    return new Promise((r) => setTimeout(r, 1000));
+    fromPromise(this.db.allItems())
+      .pipe(
+        tap((items) => (this.items = items)),
+        switchMap(() => timer(0, 30000)),
+        tap(() => {
+          this.dateNow = new Date();
+          this.wip$.next(true);
+        }),
+        concatMap(() => {
+          return timer(0, 300).pipe(
+            tap((n) => {
+              this.pageParsed$.next(n);
+            }),
+            take(62),
+            last(),
+          );
+        }),
+      )
+      .subscribe(() => {
+        this.lastWorkTime = CrawlerService.calcWorkTime(this.dateNow);
+        this.wip$.next(false);
+      });
   }
 
   private async run() {
@@ -123,7 +151,7 @@ export class CrawlerService implements OnModuleInit {
     }
   }
 
-  private async parsePage(page: number): Promise<HTMLElement> {
+  private async parsePage(page: number): Promise<any> {
     const res = await fetch(this.path + page);
     const body = await res.text();
     const root = parse(body);
@@ -134,7 +162,6 @@ export class CrawlerService implements OnModuleInit {
       throw this.noNextPageError;
     }
 
-    // @ts-ignore
     return root;
   }
 
@@ -143,12 +170,15 @@ export class CrawlerService implements OnModuleInit {
       shopName,
       merchantName,
       pos,
+      // eslint-disable-next-line prefer-const
       itemImageNode,
+      // eslint-disable-next-line prefer-const
       itemNode,
       amount,
       currency,
       price,
       refine,
+      // eslint-disable-next-line prefer-const
       cardsNode,
     ] = row.querySelectorAll('td');
 
