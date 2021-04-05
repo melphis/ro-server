@@ -41,7 +41,7 @@ export class CrawlerService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    return this.runStub();
+    // return this.runStub();
 
     fromPromise(this.db.allItems())
       .pipe(
@@ -193,7 +193,7 @@ export class CrawlerService implements OnModuleInit {
     pos = CrawlerService.parsePos(pos.text);
     amount = parseInt(amount.text, 10);
     currency = CrawlerService.parseCurrency(currency.text);
-    price = parseInt(price.text.replace(',', ''), 10);
+    price = parseInt(price.text.replace(/,/g, ''), 10);
     refine = parseInt(refine.text, 10) || 0;
 
     // TODO: добавить карты
