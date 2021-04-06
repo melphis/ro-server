@@ -1,9 +1,12 @@
+import { IPos } from '@models/pos.interface';
+import { CURRENCY } from '@models/CURRENCY';
+
 export interface IMerchant {
-  id: number;
+  id?: number;
   name: string;
-  pos_top: number;
-  pos_left: number;
-  currency: number;
-  last_update: number;
-  shop_name: string;
+  shopName: string;
+  pos: IPos;
+  currency: CURRENCY;
+  lastUpdate: Date;
+  snapId: number;
 }

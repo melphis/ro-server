@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { IItem, Item } from '@models/index';
+import { IMerchant } from './models/index';
 import { Subject } from 'rxjs';
 import { Client } from 'pg';
 
@@ -16,13 +17,8 @@ export class DatabaseService implements OnModuleInit {
       password: 'Xncnmmc32',
       port: 5433,
     });
+
     await this.db.connect();
-
-    /*this.db = await open({
-      filename: this.path,
-      driver: sqlite3.Database,
-    });*/
-
     this.db$.next(this.db);
 
     console.error('DB: initialized');
@@ -40,5 +36,13 @@ export class DatabaseService implements OnModuleInit {
 
   async createItem(item: Item) {
     await item.create(this.db);
+  }
+
+  async lastSnapId(): Promise<number> {
+    const res = await this.db.query<IMerchant>(
+      'select max(snap_id) as snap_id from ro.merchants',
+    );
+
+    return res.rows[0]?.snap_id || 1;
   }
 }

@@ -1,5 +1,5 @@
 -- auto-generated definition
-create table merchants
+create table ro.merchants
 (
     id          serial   not null
         constraint merchants_pk
@@ -8,16 +8,17 @@ create table merchants
     pos_top     smallint not null,
     pos_left    smallint not null,
     currency    smallint not null,
-    last_update time,
-    shop_name   char(40) not null
+    last_update timestamp,
+    shop_name   char(40) not null,
+    snap_id     integer
 );
 
-alter table merchants
+alter table ro.merchants
     owner to root;
 
 create unique index merchants_name_uindex
-    on merchants (name);
+    on ro.merchants (name);
 
 create unique index merchants_id_uindex
-    on merchants (id);
+    on ro.merchants (id);
 

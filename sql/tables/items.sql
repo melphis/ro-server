@@ -1,5 +1,5 @@
 -- auto-generated definition
-create table items
+create table ro.items
 (
     id      serial   not null
         constraint item_pk
@@ -8,9 +8,9 @@ create table items
     item_id integer
 );
 
-alter table items
+alter table ro.items
     owner to root;
 
 create unique index item_id_uindex
-    on items (id);
+    on ro.items (id);
 

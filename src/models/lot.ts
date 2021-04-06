@@ -12,6 +12,7 @@ export class Lot implements IDbModel {
     public price: number,
     public refine: number,
     public insertDate: Date,
+    public snapId: number,
     public cards: Item[] = [],
   ) {}
 
@@ -19,8 +20,8 @@ export class Lot implements IDbModel {
     const result = await db.query(
       `
 insert into ro.lots
-(merchant_id, item_id, amount, price, refine, currency, insert_date)
-values($1, $2, $3, $4, $5, $6, $7)`,
+(merchant_id, item_id, amount, price, refine, currency, insert_date, snap_id)
+values($1, $2, $3, $4, $5, $6, $7, $8)`,
       this.getValues(),
     );
 
@@ -36,6 +37,7 @@ values($1, $2, $3, $4, $5, $6, $7)`,
       this.refine,
       this.currency,
       this.insertDate,
+      this.snapId,
     ];
   }
 

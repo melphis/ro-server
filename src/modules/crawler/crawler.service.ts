@@ -1,23 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { parse } from 'node-html-parser';
-import { Merchant, CURRENCY, Item, Lot, IPos } from '@models/index';
+import { CURRENCY, IPos, Item, Lot, Merchant } from '@models/index';
 import { MerchantsService } from '../database/merchants.service';
-import { BehaviorSubject, concat, ObservableInput, of, range, Subject, timer } from 'rxjs';
+import { BehaviorSubject, Subject, timer } from 'rxjs';
 import { fromPromise } from 'rxjs/internal-compatibility';
-import {
-  concatAll,
-  concatMap,
-  delay, last,
-  map,
-  mapTo,
-  mergeAll,
-  switchMap,
-  take,
-  takeLast,
-  tap,
-  timeout
-} from 'rxjs/operators';
+import { concatMap, last, switchMap, take, tap } from 'rxjs/operators';
 import fetch from 'node-fetch';
 
 type TFetchedPage = AsyncGenerator<{ index: number; page: HTMLElement }>;
@@ -28,6 +16,7 @@ export class CrawlerService implements OnModuleInit {
 
   path = 'https://nya.playdf.org/?module=vending&nameid_order=asc&p=';
   currentPage = 1;
+  currentSnapId = 0;
   dateNow: Date;
   lastWorkTime: string;
   items: Item[];
@@ -43,8 +32,10 @@ export class CrawlerService implements OnModuleInit {
   onModuleInit() {
     // return this.runStub();
 
-    fromPromise(this.db.allItems())
+    fromPromise(this.db.lastSnapId())
       .pipe(
+        tap((lastId) => (this.currentSnapId = lastId + 1)),
+        switchMap(() => fromPromise(this.db.allItems())),
         tap((items) => (this.items = items)),
         switchMap(() => timer(0, CrawlerService.checkoutTimeout)),
         concatMap(() => {
@@ -197,13 +188,14 @@ export class CrawlerService implements OnModuleInit {
     refine = parseInt(refine.text, 10) || 0;
 
     // TODO: добавить карты
-    const merchant: Merchant = await this.merchants.updateOrCreate(
-      merchantName,
+    const merchant: Merchant = await this.merchants.updateOrCreate({
+      name: merchantName,
       shopName,
       pos,
       currency,
-      this.dateNow,
-    );
+      lastUpdate: this.dateNow,
+      snapId: this.currentSnapId,
+    });
 
     const lot = new Lot(
       merchant.id,
@@ -213,6 +205,7 @@ export class CrawlerService implements OnModuleInit {
       price,
       refine,
       this.dateNow,
+      this.currentSnapId,
     );
 
     merchant.addLot(lot);

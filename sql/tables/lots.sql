@@ -1,5 +1,5 @@
 -- auto-generated definition
-create table lots
+create table ro.lots
 (
     id          serial    not null
         constraint lots_pk
@@ -10,12 +10,13 @@ create table lots
     price       integer   not null,
     refine      smallint  not null,
     currency    smallint  not null,
-    insert_date timestamp not null
+    insert_date timestamp not null,
+    snap_id     integer
 );
 
-alter table lots
+alter table ro.lots
     owner to root;
 
 create unique index lots_id_uindex
-    on lots (id);
+    on ro.lots (id);
 

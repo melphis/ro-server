@@ -1,12 +1,9 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DatabaseService } from './database.service';
-import { Merchant, IMerchant, CURRENCY, IPos } from '@models/index';
+import { IMerchant } from '../database/models/index';
 import { first } from 'rxjs/operators';
 
-export interface ISaved {
-  merchantIndex: number;
-  lotIndex: number;
-}
+import { IMerchant as IMerchantModel, Merchant } from '@models/index';
 
 @Injectable()
 export class MerchantsService implements OnModuleInit {
@@ -34,6 +31,7 @@ export class MerchantsService implements OnModuleInit {
         { top: i.pos_top, left: i.pos_left },
         i.currency,
         new Date(i.last_update),
+        i.snap_id,
       );
 
       merch.id = i.id;
@@ -62,6 +60,7 @@ export class MerchantsService implements OnModuleInit {
         pos,
         data.currency,
         new Date(data.last_update),
+        data.snap_id,
       );
 
       merchant.id = data.id;
@@ -81,22 +80,23 @@ export class MerchantsService implements OnModuleInit {
     return merch;
   }
 
-  async updateOrCreate(
-    name: string,
-    shopName: string,
-    pos: IPos,
-    currency: CURRENCY,
-    lastUpdate: Date,
-  ): Promise<Merchant> {
-    let merchant = await this.get(name);
+  async updateOrCreate(data: IMerchantModel): Promise<Merchant> {
+    let merchant = await this.get(data.name);
 
     if (merchant) {
-      if (merchant.lastUpdate?.getTime() !== lastUpdate.getTime()) {
-        Object.assign(merchant, { name, shopName, pos, currency, lastUpdate });
+      if (merchant.lastUpdate?.getTime() !== data.lastUpdate.getTime()) {
+        Object.assign(merchant, data);
         await merchant.update(this.dbService.db);
       }
     } else {
-      merchant = new Merchant(name, shopName, pos, currency, lastUpdate);
+      merchant = new Merchant(
+        data.name,
+        data.shopName,
+        data.pos,
+        data.currency,
+        data.lastUpdate,
+        data.snapId,
+      );
       await merchant.create(this.dbService.db);
       this.list.push(merchant);
     }
